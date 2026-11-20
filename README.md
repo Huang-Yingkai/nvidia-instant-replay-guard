@@ -52,7 +52,7 @@ ReplayWatcher 是一个纯 PowerShell 脚本，无需编译、无需安装任何
    powershell -ExecutionPolicy Bypass -File .\install.ps1
    ```
 
-安装后会立即在后台启动（无窗口），以后每次登录 Windows 都会自动运行。
+安装后会立即在后台启动（通过 `conhost --headless`，完全没有窗口），以后每次登录 Windows 都会自动运行。计划任务还会每 5 分钟检查一次，脚本意外退出会被自动重新拉起。
 
 ### 配置
 
@@ -147,7 +147,7 @@ ReplayWatcher is a single PowerShell script — no build step, no dependencies, 
    powershell -ExecutionPolicy Bypass -File .\install.ps1
    ```
 
-It starts immediately (hidden, no window) and runs on every Windows logon.
+It starts immediately via `conhost --headless` (no window at all) and runs on every Windows logon. A 5-minute watchdog trigger relaunches it if it ever exits.
 
 ### Configure
 
