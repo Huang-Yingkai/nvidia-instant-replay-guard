@@ -82,24 +82,39 @@ function Get-PausingProcess {
 Write-Log "ReplayWatcher 已启动（保持开启；暂停于: $($PauseProcesses -join ', ')）"
 $lastReason = ''
 $retryAt = [datetime]::MinValue
+$chromeRetryPaused = $false
 
 while ($true) {
+    if ($chromeRetryPaused -and -not (Get-Process -Name 'chrome')) {
+        $chromeRetryPaused = $false
+        Write-Log 'Chrome 已完全退出，恢复开启即时回放'
+    }
+
     $overlay = Get-Process -Name 'NVIDIA Overlay'
-    $state   = Get-ReplayOn
+    $state = Get-ReplayOn
+
     if ($overlay -and $null -ne $state -and (Get-Date) -ge $retryAt) {
         $pauser = Get-PausingProcess
-        $want   = -not $pauser
+        $want = -not $pauser
         $reason = if ($pauser) { "$pauser 运行中" } else { '无暂停程序' }
-        if ($reason -ne $lastReason) { Write-Log "状态变化：$reason，目标=$(if($want){'开'}else{'关'})"; $lastReason = $reason }
 
-        if ($state -ne $want) {
+        if ($reason -ne $lastReason) {
+            Write-Log "状态变化：$reason，目标=$(if ($want) {'开'} else {'关'})"
+            $lastReason = $reason
+        }
+
+        if ($state -ne $want -and -not ($want -and $chromeRetryPaused)) {
             if (Set-Replay $want) {
-                Write-Log "已$(if($want){'开启'}else{'关闭'})即时回放"
+                Write-Log "已$(if ($want) {'开启'} else {'关闭'})即时回放"
+            } elseif ($want -and (Get-Process -Name 'chrome')) {
+                $chromeRetryPaused = $true
+                Write-Log '开启即时回放失败，暂停重试，直到 Chrome 完全退出'
             } else {
-                Write-Log "$(if($want){'开启'}else{'关闭'})失败，$BackoffSeconds 秒后重试"
+                Write-Log "$(if ($want) {'开启'} else {'关闭'})失败，$BackoffSeconds 秒后重试"
                 $retryAt = (Get-Date).AddSeconds($BackoffSeconds)
             }
         }
     }
+
     Start-Sleep -Seconds $CheckSeconds
 }
